@@ -119,8 +119,8 @@ func Start() {
 // Stop ISUCON Tracer Stop
 func Stop() {
 	if traceID != "" {
-		traceID = ""
 		log.Printf("ISUCON Tracer End (%s)\n", traceID)
+		traceID = ""
 	}
 	if profilerHandle != nil {
 		profilerHandle.Stop()
