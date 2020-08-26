@@ -27,6 +27,26 @@ var perfomanceLogFileName string
 var perfomanceLogFile *os.File
 var profilerHandle interface{ Stop() }
 
+// PerfHandle is Perfomance Measure Handle
+type PerfHandle struct {
+	startTime int64
+	tag       string
+	text      string
+}
+
+// End is Function called when Perfomance Measure End
+func (p *PerfHandle) End() {
+	if perfomanceLogFile != nil {
+		timeDelta := time.Now().UnixNano() - p.startTime
+		fmt.Fprintf(perfomanceLogFile, "%d\t%d\t%s\t%s\n", p.startTime, timeDelta, p.tag, p.text)
+	}
+}
+
+// Measure make create New Performance Measure Handle
+func Measure(tag string, text string) PerfHandle {
+	return PerfHandle{startTime: time.Now().UnixNano(), tag: tag, text: text}
+}
+
 // Initialize ISUCON Tracer
 // Wait signal (USR1, USR2, HUP, INT, TERM, QUIT)
 func init() {
@@ -51,18 +71,24 @@ func init() {
 }
 
 func registerTraceDBDriver() {
-	rep := regexp.MustCompile(`[ \n\t]{2,}`)
+	regexCutSpace := regexp.MustCompile(`[ \n\t]{2,}`)
+	regexTagComment := regexp.MustCompile(`/\* *(.*?) *\*/`)
 
 	PreFunc := func(c context.Context, stmt *proxy.Stmt, args []driver.NamedValue) (interface{}, error) {
 		return time.Now().UnixNano(), nil
 	}
 	PostFunc := func(c context.Context, ctx interface{}, stmt *proxy.Stmt, args []driver.NamedValue, err error) error {
-		now := time.Now()
-		startTime := ctx.(int64)
-		timeDelta := now.UnixNano() - startTime
-		query := rep.ReplaceAllString(stmt.QueryString, " ")
 		if sqlLogFile != nil {
-			fmt.Fprintf(sqlLogFile, "%d\t%d\t%s\n", startTime, timeDelta, query)
+			now := time.Now()
+			startTime := ctx.(int64)
+			timeDelta := now.UnixNano() - startTime
+			query := regexCutSpace.ReplaceAllString(stmt.QueryString, " ")
+			r := regexTagComment.FindStringSubmatch(query)
+			tag := ""
+			if r != nil {
+				tag = r[1]
+			}
+			fmt.Fprintf(sqlLogFile, "%d\t%d\t%s\t%s\n", startTime, timeDelta, tag, query)
 		}
 		return nil
 	}
@@ -113,7 +139,7 @@ func Start() {
 	}
 
 	// Create Perfomance Log File
-	perfomanceLogFileName = path.Join(tmpDirName, "perfomance.log")
+	perfomanceLogFileName = path.Join(tmpDirName, "perf.log")
 	if perfomanceLogFile, err = os.Create(perfomanceLogFileName); err != nil {
 		log.Printf("ISUCON Tracer Error: %s\n", err.Error())
 		return
