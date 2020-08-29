@@ -71,7 +71,7 @@ func init() {
 }
 
 func registerTraceDBDriver() {
-	regexCutSpace := regexp.MustCompile(`[ \r\n\t]{2,}`)
+	regexCutSpace := regexp.MustCompile(`[ \r\n\t]{1,}`)
 	regexTagComment := regexp.MustCompile(`/\* *(.*?) *\*/`)
 
 	PreFunc := func(c context.Context, stmt *proxy.Stmt, args []driver.NamedValue) (interface{}, error) {
