@@ -72,7 +72,7 @@ func init() {
 
 func registerTraceDBDriver() {
 	regexCutSpace := regexp.MustCompile(`[ \r\n\t]{1,}`)
-	regexTagComment := regexp.MustCompile(`/\* *(.*?) *\*/`)
+	regexTagComment := regexp.MustCompile(`(/\* *(.*?) *\*/)`)
 
 	PreFunc := func(c context.Context, stmt *proxy.Stmt, args []driver.NamedValue) (interface{}, error) {
 		return time.Now().UnixNano(), nil
@@ -83,10 +83,11 @@ func registerTraceDBDriver() {
 			startTime := ctx.(int64)
 			timeDelta := now.UnixNano() - startTime
 			query := regexCutSpace.ReplaceAllString(stmt.QueryString, " ")
-			r := regexTagComment.FindStringSubmatch(query)
+			posList := regexTagComment.FindStringSubmatchIndex(query)
 			tag := ""
-			if r != nil {
-				tag = r[1]
+			if posList != nil {
+				tag = query[posList[4]:posList[5]]
+				query = query[:posList[1]]
 			}
 			fmt.Fprintf(sqlLogFile, "%d\t%d\t%s\t%s\n", startTime, timeDelta, tag, query)
 		}
