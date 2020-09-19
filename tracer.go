@@ -25,6 +25,8 @@ var sqlLogFileName string
 var sqlLogFile *os.File
 var perfomanceLogFileName string
 var perfomanceLogFile *os.File
+var webrouteLogFileName string
+var webrouteLogFile *os.File
 var profilerHandle interface{ Stop() }
 
 // PerfHandle is Perfomance Measure Handle
@@ -32,19 +34,25 @@ type PerfHandle struct {
 	startTime int64
 	tag       string
 	text      string
+	toFile    *os.File
 }
 
 // End is Function called when Perfomance Measure End
 func (p *PerfHandle) End() {
-	if perfomanceLogFile != nil {
+	if p.toFile != nil {
 		timeDelta := time.Now().UnixNano() - p.startTime
-		fmt.Fprintf(perfomanceLogFile, "%d\t%d\t%s\t%s\n", p.startTime, timeDelta, p.tag, p.text)
+		fmt.Fprintf(p.toFile, "%d\t%d\t%s\t%s\n", p.startTime, timeDelta, p.tag, p.text)
 	}
 }
 
 // Measure make create New Performance Measure Handle
 func Measure(tag string, text string) PerfHandle {
-	return PerfHandle{startTime: time.Now().UnixNano(), tag: tag, text: text}
+	return PerfHandle{startTime: time.Now().UnixNano(), tag: tag, text: text, toFile: perfomanceLogFile}
+}
+
+// WebRouteMeasure make create New Web Route Performance Measure Handle
+func WebRouteMeasure(tag string, text string) PerfHandle {
+	return PerfHandle{startTime: time.Now().UnixNano(), tag: tag, text: text, toFile: webrouteLogFile}
 }
 
 // Initialize ISUCON Tracer
@@ -142,6 +150,13 @@ func Start() {
 	// Create Perfomance Log File
 	perfomanceLogFileName = path.Join(tmpDirName, "perf.log")
 	if perfomanceLogFile, err = os.Create(perfomanceLogFileName); err != nil {
+		log.Printf("ISUCON Tracer Error: %s\n", err.Error())
+		return
+	}
+
+	// Create Webroute Log File
+	webrouteLogFileName = path.Join(tmpDirName, "webroute.log")
+	if webrouteLogFile, err = os.Create(webrouteLogFileName); err != nil {
 		log.Printf("ISUCON Tracer Error: %s\n", err.Error())
 		return
 	}
