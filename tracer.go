@@ -86,7 +86,7 @@ func registerTraceDBDriver() {
 		return time.Now().UnixNano(), nil
 	}
 	PostFunc := func(c context.Context, ctx interface{}, stmt *proxy.Stmt, args []driver.NamedValue, err error) error {
-		if sqlLogFile != nil {
+		if sqlLogFile != nil && err != driver.ErrSkip {
 			now := time.Now()
 			startTime := ctx.(int64)
 			timeDelta := now.UnixNano() - startTime
